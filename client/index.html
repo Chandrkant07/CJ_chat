@@ -30,6 +30,16 @@
             <h2 id="current-room-code">Room: <span class="code"></span></h2>
             <button id="leave-room-btn" class="btn accent-outline">Leave</button>
           </header>
+          
+          <!-- Room Code Display Section -->
+          <div class="room-code-section" style="background: #f8f9fa; padding: 10px; margin: 10px; border-radius: 5px; text-align: center; border: 2px dashed #007bff;">
+            <h3 style="margin: 0 0 5px 0; color: #333;">Share this room code with others:</h3>
+            <div id="share-room-code" style="font-size: 24px; font-weight: bold; color: #007bff; cursor: pointer; padding: 10px; background: white; border-radius: 3px; margin: 5px 0;">
+              <span class="code"></span>
+            </div>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Click the code to copy it</p>
+          </div>
+          
           <div class="chat-main">
             <div class="chat-messages" id="chat-messages">
               <!-- Messages will be appended here -->
