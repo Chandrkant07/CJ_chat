@@ -328,50 +328,43 @@ function setupSocketEvents() {
 createRoomBtn.addEventListener('click', () => {
   console.log('Create room button clicked');
   
-  if (!socket) {
+  if (!socket || !socket.connected) {
     console.log('Creating new socket connection for create room');
     socket = io(SERVER_URL); // Connect to the server
     setupSocketEvents();
-  }
-
-  // Add a small delay to ensure socket is connected
-  setTimeout(() => {
-    console.log('Emitting create-room event');
-    socket.emit('create-room', (response) => {
-      console.log('Create room response:', response);
-      if (!response || !response.success) {
-        const errorMessage = response ? response.message : 'No response from server';
-        displayError(errorMessage || 'Failed to create room.');
-        console.error('Create room failed:', errorMessage);
-      } else {
-        currentRoomId = response.roomId;
-        updateRoomCodeDisplay(response.roomId);
-        showScreen('chat-room');
-        console.log(`Room created: ${response.roomId}`);
-        displayError(`Room created successfully! Code: ${response.roomId}`, roomError);
-        
-        // Automatically join the room after creation
-        console.log('Automatically joining created room');
-        socket.emit('join-room', { roomId: response.roomId }, (joinResponse) => {
-          console.log('Auto-join response:', joinResponse);
-          if (!joinResponse || !joinResponse.success) {
-            const joinErrorMessage = joinResponse ? joinResponse.message : 'No response from server';
-            displayError(joinErrorMessage || 'Failed to join created room.');
-            showScreen('room-entry');
-            currentRoomId = null;
-            console.error('Auto-join failed:', joinErrorMessage);
-          } else {
-            currentUsername = joinResponse.username;
-            chatMessages.innerHTML = ''; // Clear previous messages
-            joinResponse.messages.forEach(msg => addMessageToChat(msg, msg.username === currentUsername));
-            updateActiveUsers(joinResponse.activeUsers);
-            console.log(`Joined created room ${currentRoomId} as ${joinResponse.username}`);
-          }
-        });
-      }
+    
+    // Wait for connection before proceeding
+    socket.on('connect', () => {
+      console.log('Socket connected, now creating room');
+      createRoom();
     });
-  }, 100);
+  } else {
+    console.log('Socket already connected, creating room');
+    createRoom();
+  }
 });
+
+function createRoom() {
+  console.log('Emitting create-room event');
+  socket.emit('create-room', (response) => {
+    console.log('Create room response:', response);
+    if (!response || !response.success) {
+      const errorMessage = response ? response.message : 'No response from server';
+      displayError(errorMessage || 'Failed to create room.');
+      console.error('Create room failed:', errorMessage);
+    } else {
+      currentRoomId = response.roomId;
+      updateRoomCodeDisplay(response.roomId);
+      showScreen('chat-room');
+      console.log(`Room created: ${response.roomId}`);
+      displayError(`Room created successfully! Code: ${response.roomId}`, roomError);
+      
+      // Automatically join the room after creation
+      console.log('Automatically joining created room');
+      joinRoom(response.roomId);
+    }
+  });
+}
 
 joinRoomBtn.addEventListener('click', () => {
   const roomId = roomCodeInput.value.trim().toUpperCase();
@@ -381,35 +374,45 @@ joinRoomBtn.addEventListener('click', () => {
 
   console.log(`Attempting to join room: ${roomId}`);
 
-  if (!socket) {
+  if (!socket || !socket.connected) {
     console.log('Creating new socket connection for join room');
     socket = io(SERVER_URL); // Connect to the server
     setupSocketEvents();
-  }
-
-  // Add a small delay to ensure socket is connected
-  setTimeout(() => {
-    console.log(`Emitting join-room event for room: ${roomId}`);
-    socket.emit('join-room', { roomId }, (response) => {
-      console.log('Join room response:', response);
-      if (!response || !response.success) {
-        const errorMessage = response ? response.message : 'No response from server';
-        displayError(errorMessage || 'Failed to join room. Invalid code or room does not exist.');
-        console.error('Join room failed:', errorMessage);
-      } else {
-        currentRoomId = roomId;
-        currentUsername = response.username;
-        updateRoomCodeDisplay(roomId);
-        showScreen('chat-room');
-        chatMessages.innerHTML = ''; // Clear previous messages
-        response.messages.forEach(msg => addMessageToChat(msg, msg.username === currentUsername));
-        updateActiveUsers(response.activeUsers);
-        console.log(`Successfully joined room ${currentRoomId} as ${response.username}`);
-        displayError(`Successfully joined room ${roomId}!`, roomError);
-      }
+    
+    // Wait for connection before proceeding
+    socket.on('connect', () => {
+      console.log('Socket connected, now joining room');
+      joinRoom(roomId);
     });
-  }, 100);
+  } else {
+    console.log('Socket already connected, joining room');
+    joinRoom(roomId);
+  }
 });
+
+function joinRoom(roomId) {
+  console.log(`Emitting join-room event for room: ${roomId}`);
+  socket.emit('join-room', { roomId }, (response) => {
+    console.log('Join room response:', response);
+    if (!response || !response.success) {
+      const errorMessage = response ? response.message : 'No response from server';
+      displayError(errorMessage || 'Failed to join room. Invalid code or room does not exist.');
+      console.error('Join room failed:', errorMessage);
+    } else {
+      currentRoomId = roomId;
+      currentUsername = response.username;
+      updateRoomCodeDisplay(roomId);
+      showScreen('chat-room');
+      chatMessages.innerHTML = ''; // Clear previous messages
+      if (response.messages) {
+        response.messages.forEach(msg => addMessageToChat(msg, msg.username === currentUsername));
+      }
+      updateActiveUsers(response.activeUsers || []);
+      console.log(`Successfully joined room ${currentRoomId} as ${response.username}`);
+      displayError(`Successfully joined room ${roomId}!`, roomError);
+    }
+  });
+}
 
 sendMessageBtn.addEventListener('click', () => {
   const message = messageInput.value.trim();
